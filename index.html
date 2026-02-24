@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0f1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PAW - نظام إدارة الأصناف</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --bg: #050912;
+    --surface: #0d1528;
+    --surface2: #111d38;
+    --accent: #00d4ff;
+    --accent2: #7b61ff;
+    --accent3: #ff6b35;
+    --text: #e8f0fe;
+    --text-dim: #8899bb;
+    --border: rgba(0,212,255,0.15);
+    --card-glow: 0 0 30px rgba(0,212,255,0.08);
+    --success: #00ff9d;
+    --danger: #ff4757;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: 
+      radial-gradient(ellipse at 20% 20%, rgba(0,212,255,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(123,97,255,0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(5,9,18,0.92);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 28px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+  }
+
+  .header-title {
+    flex: 1;
+  }
+
+  .header-title h1 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .header-title p {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .stats-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 65px;
+    z-index: 99;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  .tab-icon { font-size: 18px; display: block; margin-bottom: 2px; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 16px; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  /* ── SEARCH ── */
+  .search-container {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 48px 14px 16px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 16px;
+    color: var(--text);
+    outline: none;
+    transition: all 0.3s;
+  }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+
+  .search-input::placeholder { color: var(--text-dim); }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+
+  /* ── FILTER CHIPS ── */
+  .filter-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .filter-chips::-webkit-scrollbar { display: none; }
+
+  .chip {
+    flex-shrink: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .chip.active {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── PRODUCT CARDS GRID ── */
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .product-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: var(--card-glow);
+    position: relative;
+  }
+
+  .product-card:active { transform: scale(0.97); }
+
+  .product-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .product-card:hover::before { opacity: 1; }
+
+  .card-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+  }
+
+  .card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-body {
+    padding: 10px;
+  }
+
+  .card-code {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+
+  .card-dept {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+
+  .empty-state .emoji { font-size: 60px; margin-bottom: 16px; }
+  .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: flex-end;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--text-dim);
+    border-radius: 2px;
+    margin: 12px auto;
+    opacity: 0.4;
+  }
+
+  .modal-image {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+  }
+
+  .modal-image img { width: 100%; height: 100%; object-fit: cover; }
+
+  .modal-content {
+    padding: 20px;
+  }
+
+  .modal-code {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid rgba(0,212,255,0.3);
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  .modal-name {
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--text);
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+
+  .info-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .info-label {
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .info-value {
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .dept-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,107,53,0.12);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--accent3);
+    font-weight: 600;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── IMPORT SCREEN ── */
+  .import-zone {
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .import-zone:hover, .import-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  .import-zone-icon { font-size: 50px; margin-bottom: 12px; }
+  .import-zone h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .import-zone p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  .import-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  /* ── TEMPLATE ── */
+  .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .columns-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .col-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .col-required { border-color: rgba(0,212,255,0.4); }
+  .col-optional { border-color: rgba(123,97,255,0.3); }
+
+  .col-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .col-required .col-dot { background: var(--accent); }
+  .col-optional .col-dot { background: var(--accent2); }
+
+  .col-name { font-size: 13px; font-weight: 600; }
+  .col-desc { font-size: 11px; color: var(--text-dim); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-bottom: 10px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0099bb);
+    color: #050912;
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .btn-danger {
+    background: rgba(255,71,87,0.12);
+    border: 1px solid rgba(255,71,87,0.3);
+    color: var(--danger);
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 0.4s;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: var(--text);
+    z-index: 300;
+    opacity: 0;
+    transition: all 0.3s;
+    white-space: nowrap;
+    max-width: 90vw;
+    text-align: center;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast.success { border-color: rgba(0,255,157,0.4); color: var(--success); }
+  .toast.error { border-color: rgba(255,71,87,0.4); color: var(--danger); }
+
+  /* ── ADD PRODUCT FORM ── */
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-textarea { min-height: 80px; resize: vertical; }
+
+  .form-input:focus, .form-textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .image-picker {
+    width: 100%;
+    aspect-ratio: 2;
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .image-picker img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .image-picker-label {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .image-picker input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* ── LOADING ── */
+  .loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0,212,255,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,212,255,0.15);
+    color: var(--accent);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  @media (min-width: 480px) {
+    .products-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">PAW</div>
+  <div class="header-title">
+    <h1>نظام إدارة الأصناف</h1>
+    <p>قاعدة بيانات محلية</p>
+  </div>
+  <div class="stats-badge" id="totalCount">0 صنف</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('search')">
+    <span class="tab-icon">🔍</span>بحث
+  </div>
+  <div class="tab" onclick="switchTab('add')">
+    <span class="tab-icon">➕</span>إضافة
+  </div>
+  <div class="tab" onclick="switchTab('import')">
+    <span class="tab-icon">📥</span>استيراد
+  </div>
+</div>
+
+<!-- ═══ SEARCH SCREEN ═══ -->
+<div class="screen active" id="screen-search">
+  <div class="search-container">
+    <input type="text" class="search-input" id="searchInput" placeholder="ابحث باسم الصنف أو الكود..." oninput="onSearch(this.value)">
+    <span class="search-icon">🔍</span>
+  </div>
+
+  <div class="filter-chips" id="deptChips">
+    <div class="chip active" onclick="filterByDept(null, this)">الكل</div>
+  </div>
+
+  <div id="productsGrid" class="products-grid"></div>
+  <div id="emptyState" class="empty-state" style="display:none">
+    <div class="emoji">📦</div>
+    <h3>لا توجد أصناف</h3>
+    <p>ابدأ بإضافة أصناف يدوياً أو استورد ملف Excel</p>
+  </div>
+</div>
+
+<!-- ═══ ADD SCREEN ═══ -->
+<div class="screen" id="screen-add">
+  <div class="section-title">➕ إضافة صنف جديد</div>
+
+  <div class="form-group">
+    <label class="form-label">كود الصنف *</label>
+    <input type="text" class="form-input" id="addCode" placeholder="مثال: ITM-001">
+  </div>
+  <div class="form-group">
+    <label class="form-label">اسم الصنف *</label>
+    <input type="text" class="form-input" id="addName" placeholder="أدخل اسم الصنف">
+  </div>
+  <div class="form-group">
+    <label class="form-label">جهة الصرف</label>
+    <input type="text" class="form-input" id="addDept" placeholder="مثال: قسم الإنتاج، المستودع...">
+  </div>
+  <div class="form-group">
+    <label class="form-label">طريقة الاستخدام</label>
+    <textarea class="form-textarea" id="addUsage" placeholder="وصف طريقة استخدام الصنف..."></textarea>
+  </div>
+  <div class="form-group">
+    <label class="form-label">ملاحظات</label>
+    <textarea class="form-textarea" id="addNotes" placeholder="أي ملاحظات إضافية..."></textarea>
+  </div>
+  <div class="form-group">
+    <label class="form-label">صورة الصنف</label>
+    <div class="image-picker" id="imagePicker" onclick="document.getElementById('addImageInput').click()">
+      <span style="font-size:36px;margin-bottom:8px">🖼️</span>
+      <span class="image-picker-label">اضغط لاختيار صورة</span>
+      <input type="file" id="addImageInput" accept="image/*" onchange="previewImage(this)">
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="addProduct()">💾 حفظ الصنف</button>
+  <button class="btn btn-secondary" onclick="clearAddForm()">🗑️ مسح الحقول</button>
+</div>
+
+<!-- ═══ IMPORT SCREEN ═══ -->
+<div class="screen" id="screen-import">
+  <div class="section-title">📥 استيراد من Excel</div>
+
+  <div class="import-zone" id="importZone">
+    <div class="import-zone-icon">📊</div>
+    <h3>اختر ملف Excel</h3>
+    <p>اسحب الملف هنا أو اضغط للاختيار<br>يدعم صيغ .xlsx و .xls و .csv</p>
+    <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(this)">
+  </div>
+
+  <!-- Progress -->
+  <div id="importProgress" style="display:none" class="info-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:14px;font-weight:600">جاري الاستيراد...</span>
+      <div class="loading-spinner"></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div id="progressText" style="font-size:12px;color:var(--text-dim);margin-top:6px;text-align:center">0 / 0</div>
+  </div>
+
+  <!-- Format Guide -->
+  <div class="info-card">
+    <div class="section-title" style="margin-bottom:8px">📋 شكل الملف المطلوب</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">يجب أن يحتوي ملف Excel على الأعمدة التالية في الصف الأول:</p>
+    <div class="columns-list">
+      <div class="col-item col-required">
+        <div class="col-dot"></div>
+        <div><div class="col-name">item_code</div><div class="col-desc">كود الصنف *</div></div>
+      </div>
+      <div class="col-item col-required">
+        <div class="col-dot"></div>
+        <div><div class="col-name">item_name</div><div class="col-desc">اسم الصنف *</div></div>
+      </div>
+      <div class="col-item col-optional">
+        <div class="col-dot"></div>
+        <div><div class="col-name">department</div><div class="col-desc">جهة الصرف</div></div>
+      </div>
+      <div class="col-item col-optional">
+        <div class="col-dot"></div>
+        <div><div class="col-name">usage</div><div class="col-desc">طريقة الاستخدام</div></div>
+      </div>
+      <div class="col-item col-optional">
+        <div class="col-dot"></div>
+        <div><div class="col-name">notes</div><div class="col-desc">ملاحظات</div></div>
+      </div>
+      <div class="col-item col-optional">
+        <div class="col-dot"></div>
+        <div><div class="col-name">image_url</div><div class="col-desc">رابط الصورة</div></div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:10px">* حقل مطلوب | يمكن إضافة الصور لاحقاً من صفحة تفاصيل الصنف</p>
+  </div>
+
+  <button class="btn btn-secondary" onclick="downloadTemplate()">⬇️ تحميل نموذج Excel فارغ</button>
+
+  <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+    <div class="section-title" style="color:var(--danger)">⚠️ إدارة البيانات</div>
+    <button class="btn btn-danger" onclick="confirmClearAll()">🗑️ حذف جميع البيانات</button>
+  </div>
+</div>
+
+<!-- ═══ PRODUCT DETAIL MODAL ═══ -->
+<div class="modal-overlay" id="productModal" onclick="closeModal(event)">
+  <div class="modal" id="modalContent">
+    <div class="modal-handle"></div>
+
+    <div style="position:relative">
+      <div class="modal-image" id="modalImage">📦</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-content">
+      <div class="modal-code" id="modalCode">--</div>
+      <div class="modal-name" id="modalName">--</div>
+
+      <div class="info-section" id="modalDeptSection">
+        <div class="info-label">🏢 جهة الصرف</div>
+        <div id="modalDept" class="info-value">--</div>
+      </div>
+
+      <div class="info-section" id="modalUsageSection">
+        <div class="info-label">📖 طريقة الاستخدام</div>
+        <div id="modalUsage" class="info-value">--</div>
+      </div>
+
+      <div class="info-section" id="modalNotesSection">
+        <div class="info-label">📝 ملاحظات</div>
+        <div id="modalNotes" class="info-value">--</div>
+      </div>
+
+      <button class="btn btn-secondary" onclick="editCurrentProduct()">✏️ تعديل الصنف</button>
+      <button class="btn btn-danger" id="deleteBtn">🗑️ حذف الصنف</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATABASE - IndexedDB
+// ══════════════════════════════════════════
+let db;
+const DB_NAME = 'PAW_DB';
+const DB_VERSION = 1;
+const STORE = 'products';
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE)) {
+        const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('code', 'code', { unique: false });
+        store.createIndex('name', 'name', { unique: false });
+        store.createIndex('department', 'department', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbAdd(product) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).add(product);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbUpdate(product) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).put(product);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbClearAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const req = tx.objectStore(STORE).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let allProducts = [];
+let filteredProducts = [];
+let activeFilter = null;
+let currentProduct = null;
+let pendingImageBase64 = null;
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+async function init() {
+  await initDB();
+  await loadProducts();
+}
+
+async function loadProducts() {
+  allProducts = await dbGetAll();
+  filteredProducts = [...allProducts];
+  updateStats();
+  buildDeptChips();
+  renderGrid(filteredProducts);
+}
+
+function updateStats() {
+  document.getElementById('totalCount').textContent = allProducts.length + ' صنف';
+}
+
+// ══════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['search', 'add', 'import'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+//  SEARCH & FILTER
+// ══════════════════════════════════════════
+function onSearch(q) {
+  q = q.trim().toLowerCase();
+  let base = activeFilter ? allProducts.filter(p => p.department === activeFilter) : allProducts;
+  if (!q) { filteredProducts = base; }
+  else {
+    filteredProducts = base.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.code || '').toLowerCase().includes(q) ||
+      (p.department || '').toLowerCase().includes(q)
+    );
+  }
+  renderGrid(filteredProducts);
+}
+
+function filterByDept(dept, el) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter = dept;
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  let base = dept ? allProducts.filter(p => p.department === dept) : allProducts;
+  if (q) base = base.filter(p =>
+    (p.name || '').toLowerCase().includes(q) ||
+    (p.code || '').toLowerCase().includes(q)
+  );
+  filteredProducts = base;
+  renderGrid(filteredProducts);
+}
+
+function buildDeptChips() {
+  const depts = [...new Set(allProducts.map(p => p.department).filter(Boolean))];
+  const container = document.getElementById('deptChips');
+  container.innerHTML = `<div class="chip active" onclick="filterByDept(null, this)">الكل</div>`;
+  depts.forEach(d => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.textContent = d;
+    chip.onclick = () => filterByDept(d, chip);
+    container.appendChild(chip);
+  });
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function renderGrid(products) {
+  const grid = document.getElementById('productsGrid');
+  const empty = document.getElementById('emptyState');
+
+  if (!products.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = products.map(p => `
+    <div class="product-card" onclick="openProduct(${p.id})">
+      <div class="card-image">
+        ${p.image ? `<img src="${p.image}" alt="${p.name}" loading="lazy">` : '📦'}
+      </div>
+      <div class="card-body">
+        <div class="card-code">${p.code || '---'}</div>
+        <div class="card-name">${p.name || 'بدون اسم'}</div>
+        ${p.department ? `<div class="card-dept">🏢 ${p.department}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════════
+//  PRODUCT MODAL
+// ══════════════════════════════════════════
+function openProduct(id) {
+  currentProduct = allProducts.find(p => p.id === id);
+  if (!currentProduct) return;
+
+  const p = currentProduct;
+  document.getElementById('modalCode').textContent = p.code || '---';
+  document.getElementById('modalName').textContent = p.name || 'بدون اسم';
+
+  const imgEl = document.getElementById('modalImage');
+  imgEl.innerHTML = p.image ? `<img src="${p.image}" alt="${p.name}">` : '📦';
+
+  document.getElementById('modalDept').textContent = p.department || 'غير محدد';
+  document.getElementById('modalUsage').textContent = p.usage || 'لا يوجد وصف';
+  document.getElementById('modalNotes').textContent = p.notes || 'لا توجد ملاحظات';
+
+  document.getElementById('deleteBtn').onclick = () => deleteProduct(id);
+
+  document.getElementById('productModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(event) {
+  if (event && event.target !== document.getElementById('productModal')) return;
+  document.getElementById('productModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function editCurrentProduct() {
+  if (!currentProduct) return;
+  closeModal();
+  switchTab('add');
+
+  setTimeout(() => {
+    document.getElementById('addCode').value = currentProduct.code || '';
+    document.getElementById('addName').value = currentProduct.name || '';
+    document.getElementById('addDept').value = currentProduct.department || '';
+    document.getElementById('addUsage').value = currentProduct.usage || '';
+    document.getElementById('addNotes').value = currentProduct.notes || '';
+
+    if (currentProduct.image) {
+      const picker = document.getElementById('imagePicker');
+      const existing = picker.querySelector('img');
+      if (!existing) {
+        const img = document.createElement('img');
+        img.src = currentProduct.image;
+        picker.insertBefore(img, picker.firstChild);
+      } else {
+        existing.src = currentProduct.image;
+      }
+      pendingImageBase64 = currentProduct.image;
+    }
+
+    // Mark as editing
+    document.querySelector('#screen-add .btn-primary').textContent = '💾 تحديث الصنف';
+    document.querySelector('#screen-add .btn-primary').onclick = () => updateProduct(currentProduct.id);
+  }, 100);
+}
+
+// ══════════════════════════════════════════
+//  ADD / UPDATE / DELETE
+// ══════════════════════════════════════════
+async function addProduct() {
+  const code = document.getElementById('addCode').value.trim();
+  const name = document.getElementById('addName').value.trim();
+  if (!code || !name) { showToast('❗ كود الصنف والاسم مطلوبان', 'error'); return; }
+
+  const product = {
+    code,
+    name,
+    department: document.getElementById('addDept').value.trim(),
+    usage: document.getElementById('addUsage').value.trim(),
+    notes: document.getElementById('addNotes').value.trim(),
+    image: pendingImageBase64 || null,
+    createdAt: Date.now()
+  };
+
+  await dbAdd(product);
+  await loadProducts();
+  clearAddForm();
+  showToast('✅ تم إضافة الصنف بنجاح', 'success');
+  switchTab('search');
+}
+
+async function updateProduct(id) {
+  const code = document.getElementById('addCode').value.trim();
+  const name = document.getElementById('addName').value.trim();
+  if (!code || !name) { showToast('❗ كود الصنف والاسم مطلوبان', 'error'); return; }
+
+  const product = {
+    id,
+    code,
+    name,
+    department: document.getElementById('addDept').value.trim(),
+    usage: document.getElementById('addUsage').value.trim(),
+    notes: document.getElementById('addNotes').value.trim(),
+    image: pendingImageBase64 || null,
+    updatedAt: Date.now()
+  };
+
+  await dbUpdate(product);
+  await loadProducts();
+  clearAddForm();
+  resetAddForm();
+  showToast('✅ تم تحديث الصنف', 'success');
+  switchTab('search');
+}
+
+async function deleteProduct(id) {
+  if (!confirm('هل أنت متأكد من حذف هذا الصنف؟')) return;
+  await dbDelete(id);
+  closeModal();
+  await loadProducts();
+  showToast('🗑️ تم حذف الصنف', 'error');
+}
+
+function resetAddForm() {
+  const btn = document.querySelector('#screen-add .btn-primary');
+  btn.textContent = '💾 حفظ الصنف';
+  btn.onclick = addProduct;
+}
+
+function clearAddForm() {
+  ['addCode','addName','addDept','addUsage','addNotes'].forEach(id => document.getElementById(id).value = '');
+  const picker = document.getElementById('imagePicker');
+  const img = picker.querySelector('img');
+  if (img) img.remove();
+  pendingImageBase64 = null;
+  resetAddForm();
+}
+
+// ══════════════════════════════════════════
+//  IMAGE
+// ══════════════════════════════════════════
+function previewImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingImageBase64 = e.target.result;
+    const picker = document.getElementById('imagePicker');
+    let img = picker.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      picker.insertBefore(img, picker.firstChild);
+    }
+    img.src = pendingImageBase64;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════
+//  EXCEL IMPORT
+// ══════════════════════════════════════════
+function handleExcelUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const progress = document.getElementById('importProgress');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  progress.style.display = 'block';
+
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      let imported = 0;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const code = String(row['item_code'] || row['كود'] || row['الكود'] || '').trim();
+        const name = String(row['item_name'] || row['اسم'] || row['الاسم'] || row['الصنف'] || '').trim();
+        if (!code && !name) continue;
+
+        const product = {
+          code: code || `ITM-${Date.now()}-${i}`,
+          name: name || 'بدون اسم',
+          department: String(row['department'] || row['جهة الصرف'] || row['القسم'] || '').trim(),
+          usage: String(row['usage'] || row['الاستخدام'] || row['طريقة الاستخدام'] || '').trim(),
+          notes: String(row['notes'] || row['ملاحظات'] || '').trim(),
+          image: String(row['image_url'] || row['صورة'] || '').trim() || null,
+          createdAt: Date.now()
+        };
+
+        await dbAdd(product);
+        imported++;
+
+        const pct = Math.round(((i + 1) / rows.length) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = `${i + 1} / ${rows.length}`;
+      }
+
+      await loadProducts();
+      progress.style.display = 'none';
+      input.value = '';
+      showToast(`✅ تم استيراد ${imported} صنف بنجاح`, 'success');
+      setTimeout(() => switchTab('search'), 1000);
+    } catch (err) {
+      progress.style.display = 'none';
+      showToast('❗ خطأ في قراءة الملف. تأكد من الصيغة الصحيحة', 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ══════════════════════════════════════════
+//  TEMPLATE DOWNLOAD
+// ══════════════════════════════════════════
+function downloadTemplate() {
+  const data = [
+    { item_code: 'ITM-001', item_name: 'مثال: قلم حبر', department: 'المستودع الرئيسي', usage: 'يستخدم للكتابة اليدوية', notes: 'متوفر بألوان متعددة', image_url: '' },
+    { item_code: 'ITM-002', item_name: 'مثال: طاولة مكتب', department: 'الإدارة', usage: 'أثاث مكتبي للعمل', notes: '', image_url: '' },
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Products');
+  XLSX.writeFile(wb, 'PAW_Template.xlsx');
+  showToast('⬇️ جاري تحميل النموذج...', 'success');
+}
+
+// ══════════════════════════════════════════
+//  CLEAR ALL
+// ══════════════════════════════════════════
+async function confirmClearAll() {
+  if (!confirm('⚠️ سيتم حذف جميع البيانات نهائياً! هل أنت متأكد؟')) return;
+  if (!confirm('آخر تأكيد - هل تريد حذف كل الأصناف؟')) return;
+  await dbClearAll();
+  await loadProducts();
+  showToast('🗑️ تم حذف جميع البيانات', 'error');
+}
+
+// ══════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type;
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════
+//  DRAG & DROP
+// ══════════════════════════════════════════
+const zone = document.getElementById('importZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  const input = document.getElementById('excelInput');
+  input.files = e.dataTransfer.files;
+  handleExcelUpload(input);
+});
+
+// ══════════════════════════════════════════
+//  SERVICE WORKER
+// ══════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ══════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
